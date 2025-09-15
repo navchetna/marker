@@ -71,7 +71,7 @@ class OpenAIService(BaseService):
             max_retries = self.max_retries
 
         if timeout is None:
-            timeout = self.timeout
+            timeout = 360000
 
         client = self.get_client()
         image_data = self.format_image_for_llm(image)
