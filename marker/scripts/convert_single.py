@@ -15,10 +15,10 @@ from marker.logger import configure_logging, get_logger
 from marker.models import create_model_dict
 from marker.output import save_output
 
-import sys
-from pathlib import Path
-pdf_parsing_root = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(pdf_parsing_root))
+# import sys
+# from pathlib import Path
+# pdf_parsing_root = Path(__file__).resolve().parents[3]
+# sys.path.insert(0, str(pdf_parsing_root))
 
 from parsers.tree import Tree
 from parsers.treeparser import TreeParser
