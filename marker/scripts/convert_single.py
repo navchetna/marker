@@ -14,8 +14,8 @@ from marker.config.printer import CustomClickPrinter
 from marker.logger import configure_logging, get_logger
 from marker.models import create_model_dict
 
-from marker.parsers.tree import Tree
-from marker.parsers.treeparser import TreeParser
+from tree_parser.tree import Tree
+from tree_parser.treeparser import TreeParser
 
 configure_logging()
 logger = get_logger()
