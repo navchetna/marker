@@ -15,6 +15,14 @@ from marker.logger import configure_logging, get_logger
 from marker.models import create_model_dict
 from marker.output import save_output
 
+import sys
+from pathlib import Path
+pdf_parsing_root = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(pdf_parsing_root))
+
+from parsers.tree import Tree
+from parsers.treeparser import TreeParser
+
 configure_logging()
 logger = get_logger()
 
@@ -35,9 +43,30 @@ def convert_single_cli(fpath: str, **kwargs):
         renderer=config_parser.get_renderer(),
         llm_service=config_parser.get_llm_service(),
     )
-    rendered = converter(fpath)
-    out_folder = config_parser.get_output_folder(fpath)
-    save_output(rendered, out_folder, config_parser.get_base_filename(fpath))
+    tree = Tree(fpath)
+    tree_parser = TreeParser()
+    tree_parser.populate_tree(tree, converter)
 
-    logger.info(f"Saved markdown to {out_folder}")
+    tree_parser.generate_output_text(tree)
+    tree_parser.generate_output_json(tree)
     logger.info(f"Total time: {time.time() - start}")
+
+def convert_pdf_to_markdown(fpath: str, config_kwargs: dict | None = None) -> str:
+    from marker.config.parser import ConfigParser
+    from marker.models import create_model_dict
+
+    cfg = dict(config_kwargs or {})
+    cfg.setdefault("output_format", "markdown")
+    models = create_model_dict()
+    config_parser = ConfigParser(cfg)
+
+    converter_cls = config_parser.get_converter_cls()
+    converter = converter_cls(
+        config=config_parser.generate_config_dict(),
+        artifact_dict=models,
+        processor_list=config_parser.get_processors(),
+        renderer=config_parser.get_renderer(),
+        llm_service=config_parser.get_llm_service(),
+    )
+    rendered = converter(fpath)
+    return rendered
