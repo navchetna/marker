@@ -19,6 +19,9 @@ from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.settings import settings
 
+from tree_parser.tree import Tree
+from tree_parser.treeparser import TreeParser
+
 app_data = {}
 
 
@@ -53,6 +56,7 @@ async def root():
 
 
 class CommonParams(BaseModel):
+    user: str = Field(..., description="The user submitting the request")
     filepath: Annotated[
         Optional[str], Field(description="The path to the PDF file to convert.")
     ]
@@ -88,6 +92,7 @@ async def _convert_pdf(params: CommonParams):
         "Invalid output format"
     )
     try:
+        user_param = params.user
         options = params.model_dump()
         config_parser = ConfigParser(options)
         config_dict = config_parser.generate_config_dict()
@@ -100,6 +105,12 @@ async def _convert_pdf(params: CommonParams):
             renderer=config_parser.get_renderer(),
             llm_service=config_parser.get_llm_service(),
         )
+        tree = Tree(params.filepath, user_param)
+        tree_parser = TreeParser(user_param)
+        tree_parser.populate_tree(tree, converter)
+
+        tree_parser.generate_output_text(tree)
+        tree_parser.generate_output_json(tree)
         rendered = converter(params.filepath)
         text, _, images = text_from_rendered(rendered)
         metadata = rendered.metadata
@@ -134,6 +145,7 @@ async def convert_pdf(params: CommonParams):
 
 @app.post("/marker/upload")
 async def convert_pdf_upload(
+    user: str = Form(..., description="The user submitting the request"),
     page_range: Optional[str] = Form(default=None),
     force_ocr: Optional[bool] = Form(default=False),
     paginate_output: Optional[bool] = Form(default=False),
@@ -148,6 +160,7 @@ async def convert_pdf_upload(
         upload_file.write(file_contents)
 
     params = CommonParams(
+        user=user,
         filepath=upload_path,
         page_range=page_range,
         force_ocr=force_ocr,
