@@ -26,7 +26,6 @@ app_data = {}
 
 
 UPLOAD_DIRECTORY = "./uploads"
-os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 
 
 @asynccontextmanager
@@ -154,6 +153,7 @@ async def convert_pdf_upload(
         ..., description="The PDF file to convert.", media_type="application/pdf"
     ),
 ):
+    os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
     upload_path = os.path.join(UPLOAD_DIRECTORY, file.filename)
     with open(upload_path, "wb+") as upload_file:
         file_contents = await file.read()
