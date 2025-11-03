@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: marker-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: marker-deployment
+  namespace: marker-api
+  labels:
+    app: marker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: marker
+  template:
+    metadata:
+      labels:
+        app: marker
+    spec:
+      containers:
+      - name: marker-api
+        image: navchetna/marker-server:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+        resources:
+          requests:
+            memory: "12Gi"
+            cpu: "2000m"
+          limits:
+            memory: "16Gi"
+            cpu: "4000m"
+        # startupProbe:
+        #   httpGet:
+        #     path: /
+        #     port: 8000
+        #   failureThreshold: 60
+        #   periodSeconds: 5
+        # livenessProbe:
+        #   httpGet:
+        #     path: /
+        #     port: 8000
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 30
+        #   failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: marker-service
+  namespace: marker-api
+  labels:
+    app: marker
+spec:
+  type: NodePort
+  selector:
+    app: marker
+  ports:
+  - port: 80
+    targetPort: 8000
+    nodePort: 32080
+    protocol: TCP
+    name: http
