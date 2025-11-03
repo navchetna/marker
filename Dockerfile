@@ -28,4 +28,4 @@ RUN uv pip install git+https://github.com/navchetna/tree-parser.git --system --t
 EXPOSE 8000
 
 # Run FastAPI server
-CMD ["marker_server", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "marker.scripts.server:app", "--host", "0.0.0.0", "--port", "8000"]
