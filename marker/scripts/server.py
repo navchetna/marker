@@ -18,6 +18,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from starlette.responses import HTMLResponse
 
+
 from marker.batch_models import BatchJob, BatchJobFile, BatchJobStatus
 from marker.batch_store import (
     add_batch_job,
