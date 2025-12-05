@@ -15,14 +15,23 @@ from marker.logger import configure_logging, get_logger
 from marker.models import create_model_dict
 from marker.output import save_output
 
+from tree_parser.tree import Tree
+from tree_parser.treeparser import TreeParser
+
 configure_logging()
 logger = get_logger()
 
 
 @click.command(cls=CustomClickPrinter, help="Convert a single PDF to markdown.")
 @click.argument("fpath", type=str)
+@click.option(
+    "--user",
+    required=True,
+    type=str,
+    help="The user name or ID to determine the output directory."
+)
 @ConfigParser.common_options
-def convert_single_cli(fpath: str, **kwargs):
+def convert_single_cli(fpath: str, user: str, **kwargs):
     models = create_model_dict()
     start = time.time()
     config_parser = ConfigParser(kwargs)
@@ -35,9 +44,10 @@ def convert_single_cli(fpath: str, **kwargs):
         renderer=config_parser.get_renderer(),
         llm_service=config_parser.get_llm_service(),
     )
-    rendered = converter(fpath)
-    out_folder = config_parser.get_output_folder(fpath)
-    save_output(rendered, out_folder, config_parser.get_base_filename(fpath))
+    tree = Tree(fpath, user_param=user)
+    tree_parser = TreeParser(user)
+    tree_parser.populate_tree(tree, converter)
 
-    logger.info(f"Saved markdown to {out_folder}")
+    tree_parser.generate_output_text(tree)
+    tree_parser.generate_output_json(tree)
     logger.info(f"Total time: {time.time() - start}")
