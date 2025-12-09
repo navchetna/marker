@@ -17,8 +17,6 @@ import click
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from starlette.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-
 
 from marker.batch_models import BatchJob, BatchJobFile, BatchJobStatus
 from marker.batch_store import (
@@ -39,6 +37,7 @@ from tree_parser.tree import Tree
 from tree_parser.treeparser import TreeParser
 
 app_data = {}
+
 
 UPLOAD_DIRECTORY = "./uploads"
 BATCH_STORAGE_DIR = Path("./batch_jobs_store")
@@ -99,13 +98,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.get("/")
 async def root():
@@ -150,6 +142,12 @@ class CommonParams(BaseModel):
             description="The format to output the text in.  Can be 'markdown', 'json', or 'html'.  Defaults to 'markdown'."
         ),
     ] = "markdown"
+    output_dir: Annotated[
+        Optional[str],
+        Field(
+            description="Optional directory for storing TreeParser output files."
+        ),
+    ] = None
 
 
 async def _convert_pdf(params: CommonParams):
@@ -170,8 +168,8 @@ async def _convert_pdf(params: CommonParams):
             renderer=config_parser.get_renderer(),
             llm_service=config_parser.get_llm_service(),
         )
-        tree = Tree(params.filepath, user_param)
-        tree_parser = TreeParser(user_param)
+        tree = Tree(params.filepath, user_param, output_dir=params.output_dir)
+        tree_parser = TreeParser(user_param, params.output_dir)
         tree_parser.populate_tree(tree, converter)
 
         tree_parser.generate_output_text(tree)
@@ -251,7 +249,13 @@ async def _process_batch_file(job_id: str, batch_file: BatchJobFile) -> None:
     scratch_file.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(input_file, scratch_file)
 
-    params = CommonParams(**batch_file.params, filepath=str(scratch_file))
+    batch_output_dir = processing_dir / "output"
+    batch_output_dir.mkdir(parents=True, exist_ok=True)
+    params = CommonParams(
+        **batch_file.params,
+        filepath=str(scratch_file),
+        output_dir=str(batch_output_dir),
+    )
 
     try:
         result = await _convert_pdf(params)
@@ -279,8 +283,7 @@ async def _process_batch_file(job_id: str, batch_file: BatchJobFile) -> None:
         format=format_choice,
     )
 
-    output_dir = processing_dir / "output"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = batch_output_dir
     output_path = output_dir / "output.json"
     output_payload = {
         "job_id": job_id,
