@@ -39,11 +39,12 @@ from tree_parser.treeparser import TreeParser
 app_data = {}
 
 
-UPLOAD_DIRECTORY = "./uploads"
-BATCH_STORAGE_DIR = Path("./batch_jobs_store")
+
+UPLOAD_DIRECTORY = Path(os.environ.get("UPLOAD_DIR", "./uploads"))
+BATCH_STORAGE_DIR = Path(os.environ.get("BATCH_STORE_DIR", "./batch_jobs_store"))
 BATCH_UPLOAD_DIRECTORY = BATCH_STORAGE_DIR / "uploads"
-BATCH_PROCESSING_DIR = Path("./batch_processing")
-BATCH_PROCESSING_INTERVAL_SECONDS = 10
+BATCH_PROCESSING_DIR = Path(os.environ.get("BATCH_PROCESSING_DIR", "./batch_processing"))
+BATCH_PROCESSING_INTERVAL_SECONDS = int(os.environ.get("BATCH_INTERVAL", "10"))
 
 
 def _sanitize_file_id(file_id: str) -> str:
@@ -76,6 +77,14 @@ def _job_status_response(job: BatchJob) -> dict:
         "params": job.params,
         "files": [_file_status_response(file) for file in job.files],
     }
+
+
+def _write_job_status_file(job: BatchJob) -> None:
+    """Persist the job's status response inside its batch_processing folder."""
+    status_dir = BATCH_PROCESSING_DIR / job.job_id
+    status_dir.mkdir(parents=True, exist_ok=True)
+    status_file = status_dir / "status.json"
+    status_file.write_text(json.dumps(_job_status_response(job), indent=2))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -282,6 +291,12 @@ async def _process_batch_file(job_id: str, batch_file: BatchJobFile) -> None:
         images=result.get("images", {}),
         format=format_choice,
     )
+    job = get_batch_job_status(job_id)
+    if job and job.status not in (
+        BatchJobStatus.processing,
+        BatchJobStatus.pending,
+    ):
+        _write_job_status_file(job)
 
     output_dir = batch_output_dir
     output_path = output_dir / "output.json"

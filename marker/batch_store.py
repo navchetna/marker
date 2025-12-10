@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import hashlib
+import os
 
 import json
 from datetime import datetime
@@ -11,7 +12,8 @@ from .batch_models import BatchJob, BatchJobFile, BatchJobStatus
 from typing import Annotated, List, Optional
 
 
-BATCH_STORE_PATH = Path("./batch_jobs_store/batch_jobs.json")
+_BATCH_STORAGE_DIR = Path(os.environ.get("BATCH_STORE_DIR", "./batch_jobs_store"))
+BATCH_STORE_PATH = _BATCH_STORAGE_DIR / "batch_jobs.json"
 
 
 def _ensure_store_path() -> None:
