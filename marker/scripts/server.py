@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from starlette.responses import HTMLResponse
 
 from marker.config.parser import ConfigParser
-from marker.output import text_from_rendered
+from marker.output import text_from_rendered, output_exists, save_output
 
 import base64
 from contextlib import asynccontextmanager
@@ -60,6 +60,12 @@ class CommonParams(BaseModel):
     filepath: Annotated[
         Optional[str], Field(description="The path to the PDF file to convert.")
     ]
+    output_dir: Annotated[
+        Optional[str],
+        Field(
+            description="Base output directory. Defaults to ~/user."
+        ),
+    ] = None
     page_range: Annotated[
         Optional[str],
         Field(
@@ -105,13 +111,21 @@ async def _convert_pdf(params: CommonParams):
             renderer=config_parser.get_renderer(),
             llm_service=config_parser.get_llm_service(),
         )
-        tree = Tree(params.filepath, user_param)
-        tree_parser = TreeParser(user_param)
-        tree_parser.populate_tree(tree, converter)
+        tree = Tree(params.filepath, user_param, output_dir=params.output_dir)
+        tree_parser = TreeParser(user_param, output_dir=params.output_dir)
+
+        # Generate markdown
+        rendered = converter(params.filepath)
+        filename = tree_parser.get_filename(params.filepath)
+        output_path = os.path.join(tree_parser.OUTPUT_DIR, filename)
+        os.makedirs(output_path, exist_ok=True)
+        save_output(rendered, output_path, filename)
+
+        # Build tree structure
+        tree_parser.populate_tree(tree)
 
         tree_parser.generate_output_text(tree)
         tree_parser.generate_output_json(tree)
-        rendered = converter(params.filepath)
         text, _, images = text_from_rendered(rendered)
         metadata = rendered.metadata
     except Exception as e:
