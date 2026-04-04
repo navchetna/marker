@@ -63,7 +63,7 @@ def convert_single_cli(fpath: str, user: str, output_dir: str, **kwargs):
         logger.info(f"Saved markdown to {output_path}")
 
     # Build tree structure (TOC via docling + parse markdown)
-    tree_parser.populate_tree(tree)
+    tree_parser.populate_tree(tree, extract_images=True)
 
     tree_parser.generate_output_text(tree)
     tree_parser.generate_output_json(tree)

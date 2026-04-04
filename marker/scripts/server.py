@@ -122,7 +122,7 @@ async def _convert_pdf(params: CommonParams):
         save_output(rendered, output_path, filename)
 
         # Build tree structure
-        tree_parser.populate_tree(tree)
+        tree_parser.populate_tree(tree, extract_images=True)
 
         tree_parser.generate_output_text(tree)
         tree_parser.generate_output_json(tree)
