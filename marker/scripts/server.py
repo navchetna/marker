@@ -1,7 +1,7 @@
 import traceback
-
 import click
 import os
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 from starlette.responses import HTMLResponse
@@ -20,7 +20,7 @@ from marker.models import create_model_dict
 from marker.settings import settings
 
 from tree_parser.tree import Tree
-from tree_parser.treeparser import TreeParser
+from tree_parser.treeparser import TreeParser, process_pdf, save_toc
 
 app_data = {}
 
@@ -121,8 +121,13 @@ async def _convert_pdf(params: CommonParams):
         os.makedirs(output_path, exist_ok=True)
         save_output(rendered, output_path, filename)
 
-        # Build tree structure
-        tree_parser.populate_tree(tree, extract_images=True)
+        # Treeparse docling pass
+        file_dir = Path(output_path)
+        toc, _ = process_pdf(Path(params.filepath), file_dir, extract_images=True)
+        save_toc(toc, file_dir / "toc.txt")
+
+        # Build tree structure with pre-computed TOC
+        tree_parser.populate_tree(tree, toc=toc)
 
         tree_parser.generate_output_text(tree)
         tree_parser.generate_output_json(tree)
